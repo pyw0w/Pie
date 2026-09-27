@@ -282,6 +282,29 @@ the user.
   session but a `models.json` provider is not, and that reading the user's real
   configuration changes nothing.
 
+### Releases (versioning is derived, not stored)
+
+There is no version number in the source tree. `.github/workflows/release.yml`
+runs on every push to `main`: `Tools/CI/verify.sh` (type-check + JSON/RPC/path
+harnesses against a freshly installed `pi`) → `Tools/Release/version.sh` →
+`Tools/Release/build-app.sh` → `gh release create`. It never commits or pushes
+back, so it cannot trigger itself.
+
+- **Version source**: Conventional Commit subjects of every commit since the
+  last `vX.Y.Z` tag. `feat:` → minor, `fix:`/`perf:`/`refactor:`/`build:` →
+  patch, `docs:`/`chore:`/`ci:`/`style:`/`test:` → releases nothing alone,
+  `type!:` or a `BREAKING CHANGE:` footer → major, highest wins. First release
+  is always `1.0.0`.
+- **Stamping**: `build-app.sh` passes `MARKETING_VERSION` and
+  `CURRENT_PROJECT_VERSION` to `xcodebuild` as build settings; the values in
+  `project.pbxproj` are placeholders nobody edits. The script then asserts the
+  bundle's `CFBundleShortVersionString` matches, checks `arm64`, ad-hoc signs,
+  and zips `dist/Pie-<version>-arm64.zip` for the release.
+- **Notes**: generated from the same commit subjects (`version.sh notes`);
+  there is no hand-written changelog.
+- **Rules for the agent**: `AGENTS.md` (always loaded) and the
+  `release-versioning` skill (`.pi/skills/release-versioning/SKILL.md`).
+
 ### Environment (this machine)
 
 - macOS 15.3.2, Xcode 16.4, Swift 6.1.2 (language mode 5), arm64.
@@ -543,7 +566,9 @@ Consequences, both implemented:
 
 - `PiDiscoveryService` **validates** every candidate by running `pi --version`
   and only returns a working installation. It tries the login-shell hit first,
-  then a static candidate list, then every `~/.nvm/versions/node/*/bin/pi`,
+  then a static candidate list — led by `<agent>/bin/pi` (usually
+  `~/.pi/agent/bin/pi`, resolved through `PiPaths` so `PI_CODING_AGENT_DIR`
+  is honoured) — then every `~/.nvm/versions/node/*/bin/pi`,
   newest first. The failure message records why the login-shell hit was rejected.
 - `PiDiscoveryService.launchEnvironment(executable:shellPath:)` returns a PATH
   with **the executable's own directory first**, then the login-shell PATH with
