@@ -94,7 +94,7 @@ jobs:
         run: ./Tools/Release/build-app.sh "$VERSION"
 
       - name: Publish release
-        if: steps.ver.outputs.releasable == 'true'
+        if: steps.ver.outputs.releasable == 'yes'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.ver.outputs.version }}
@@ -114,7 +114,7 @@ jobs:
             --target "$GITHUB_SHA"
 
       - name: Nothing to release
-        if: steps.ver.outputs.releasable != 'true'
+        if: steps.ver.outputs.releasable != 'yes'
         env:
           CURRENT: ${{ steps.ver.outputs.current }}
         run: |
