@@ -298,8 +298,10 @@ back, so it cannot trigger itself.
 - **Stamping**: `build-app.sh` passes `MARKETING_VERSION` and
   `CURRENT_PROJECT_VERSION` to `xcodebuild` as build settings; the values in
   `project.pbxproj` are placeholders nobody edits. The script then asserts the
-  bundle's `CFBundleShortVersionString` matches, checks `arm64`, ad-hoc signs,
-  and zips `dist/Pie-<version>-arm64.zip` for the release.
+  bundle's `CFBundleShortVersionString` matches, asserts every requested
+  architecture is in the binary (`ARCHS=arm64 x86_64` — one universal app),
+  ad-hoc signs, and packages `dist/Pie-<version>-universal.dmg` plus `.zip`
+  for the release.
 - **Notes**: generated from the same commit subjects (`version.sh notes`);
   there is no hand-written changelog.
 - **Rules for the agent**: `AGENTS.md` (always loaded) and the

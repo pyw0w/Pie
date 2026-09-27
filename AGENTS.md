@@ -107,11 +107,13 @@ evidence you get for those.
 1. `Tools/CI/verify.sh` — type-check, JSON scanner, RPC against a real `pi`,
    Pi path resolution. A failure blocks the release.
 2. `version.sh` — the version, from the commit subjects since the last tag.
-3. `Tools/Release/build-app.sh` — arm64 `Pie.app`, version stamped, ad-hoc
-   signed, zipped to `dist/Pie-<version>-arm64.zip`.
+3. `Tools/Release/build-app.sh` — universal `Pie.app` (arm64 + Intel),
+   version stamped, ad-hoc signed, packaged as
+   `dist/Pie-<version>-universal.dmg` and `.zip`.
 4. If the pending commits released nothing (only `chore`/`docs`/…), it stops:
    no tag, no release.
-5. Otherwise `gh release create v<version>` with generated notes and the zip.
+5. Otherwise `gh release create v<version>` with generated notes, the DMG
+   and the zip.
 
 Anything pushed to another branch only verifies (via whatever workflow you run
 locally); it never tags.

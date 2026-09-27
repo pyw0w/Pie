@@ -1,7 +1,8 @@
 ---
 # Releases PiCode on every push to main: computes the next version from
-# Conventional Commits (Tools/Release/version.sh), verifies the tree, builds an
-# arm64 Pie.app, and publishes a GitHub Release with the zip attached.
+# Conventional Commits (Tools/Release/version.sh), verifies the tree, builds a
+# universal Pie.app (arm64 + Intel), and publishes a GitHub Release carrying a
+# DMG and a zip.
 #
 # No job commits or pushes back — the tag is created by `gh release create`
 # at the pushed commit, so this workflow cannot trigger itself.
@@ -24,7 +25,10 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      # Pinned to the release commit, not the moving major tag: a supply-chain
+      # edit upstream must not be able to change what this workflow runs.
+      # actions/checkout v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           # version.sh needs all history and tags to find the last release.
           fetch-depth: 0
@@ -38,7 +42,8 @@ jobs:
           for app in /Applications/Xcode*.app; do
             [ -e "$app" ] || continue
             xc="$app/Contents/Developer/usr/bin/xcodebuild"
-            ver=$("$xc" -version 2>/dev/null | awk 'NR==1{print $2}') || continue
+            out=$("$xc" -version 2>/dev/null) || continue
+            ver=$(printf '%s\n' "$out" | awk 'NR==1{print $2}')
             [ -n "$ver" ] || continue
             score=$(awk -F. -v v="$ver" 'BEGIN{
               n = split(v, a, "."); s = 0
@@ -88,19 +93,20 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "current: $CUR -> next: $NEX (bump: $BUMP)"
 
-      - name: Build arm64 Pie.app
+      - name: Build universal Pie.app
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: ./Tools/Release/build-app.sh "$VERSION"
 
-      # A run that releases attaches the zip to the release itself; a run that
-      # does not would otherwise throw its build away, so it keeps one.
+      # A run that releases attaches the files to the release itself; a run
+      # that does not would otherwise throw its build away, so it keeps one.
       - name: Keep the build as an artifact
         if: steps.ver.outputs.releasable != 'yes'
-        uses: actions/upload-artifact@v4
+        # actions/upload-artifact v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: Pie-${{ steps.ver.outputs.version }}-arm64
-          path: dist/*.zip
+          name: Pie-${{ steps.ver.outputs.version }}-universal
+          path: dist/*
           if-no-files-found: error
           retention-days: 14
 
@@ -112,14 +118,15 @@ jobs:
         run: |
           set -euo pipefail
           TAG="v$VERSION"
-          ZIP="dist/Pie-$VERSION-arm64.zip"
+          DMG="dist/Pie-$VERSION-universal.dmg"
+          ZIP="dist/Pie-$VERSION-universal.zip"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "$TAG already exists — nothing to release"
             exit 0
           fi
           ./Tools/Release/version.sh notes > notes.md
           cat notes.md
-          gh release create "$TAG" "$ZIP" \
+          gh release create "$TAG" "$DMG" "$ZIP" \
             --title "Pie $VERSION" \
             --notes-file notes.md \
             --target "$GITHUB_SHA"

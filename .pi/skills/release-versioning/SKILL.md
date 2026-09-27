@@ -73,13 +73,13 @@ repository:
    against a freshly installed real `pi`, Pi path resolution. Failure = no
    release.
 2. `version.sh` — bump and version from the commits since the last tag.
-3. `Tools/Release/build-app.sh <version>` — arm64 `Pie.app`, `MARKETING_VERSION`
-   and `CURRENT_PROJECT_VERSION` passed to `xcodebuild` (never edited in the
-   project file), ad-hoc signed, zipped to `dist/Pie-<version>-arm64.zip`, and
-   the stamped `CFBundleShortVersionString` is asserted against the computed
-   version.
-4. `gh release create v<version>` with `version.sh notes` and the zip, tagged at
-   the pushed commit.
+3. `Tools/Release/build-app.sh <version>` — universal `Pie.app`
+   (`ARCHS=arm64 x86_64`), `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`
+   passed to `xcodebuild` (never edited in the project file), ad-hoc signed,
+   packaged as `dist/Pie-<version>-universal.dmg` and `.zip`, with the stamped
+   `CFBundleShortVersionString` and both architectures asserted.
+4. `gh release create v<version>` with `version.sh notes`, the DMG and the zip,
+   tagged at the pushed commit.
 
 If every pending commit is `chore`/`docs`/`ci`/`style`/`test`, step 4 is
 skipped: no tag, no release, no failure.
