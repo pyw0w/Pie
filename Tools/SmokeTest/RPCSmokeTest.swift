@@ -101,8 +101,24 @@ func runSmokeTest() async -> Int32 {    var failures = 0
     }
 
     let models = await request(.getAvailableModels, "get_available_models")
-    let modelList = models?.array("models")?.compactMap(PiModel.init(json:)) ?? []
-    check("models parsed by PiModel", !modelList.isEmpty, "\(modelList.count) models, e.g. \(modelList.first?.qualifiedID ?? "-")")
+    let rawModelEntries = models?.array("models") ?? []
+    let modelList = rawModelEntries.compactMap(PiModel.init(json:))
+    // A freshly created agent directory — what CI's runner has — carries no
+    // `models.json` and no credentials, so an empty list is an environment
+    // fact and says nothing about the parser. Only a non-empty payload that
+    // fails to parse is a real failure, and then the payload itself is printed
+    // so the log shows what Pi actually sent.
+    if rawModelEntries.isEmpty {
+        check("models parsed by PiModel", true,
+              "skipped — this pi reports no models (no models.json or credentials here)")
+    } else if modelList.isEmpty {
+        check("models parsed by PiModel", false,
+              "\(rawModelEntries.count) raw entries, 0 parsed; first: " +
+              (rawModelEntries.first.map { String($0.prettyDescription.prefix(400)) } ?? "-"))
+    } else {
+        check("models parsed by PiModel", true,
+              "\(modelList.count) models, e.g. \(modelList.first?.qualifiedID ?? "-")")
+    }
 
     let commands = await request(.getCommands, "get_commands")
     let commandList = commands?.array("commands")?.map(PiCommand.init(json:)) ?? []
