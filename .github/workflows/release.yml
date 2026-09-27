@@ -93,6 +93,17 @@ jobs:
           VERSION: ${{ steps.ver.outputs.version }}
         run: ./Tools/Release/build-app.sh "$VERSION"
 
+      # A run that releases attaches the zip to the release itself; a run that
+      # does not would otherwise throw its build away, so it keeps one.
+      - name: Keep the build as an artifact
+        if: steps.ver.outputs.releasable != 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pie-${{ steps.ver.outputs.version }}-arm64
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Publish release
         if: steps.ver.outputs.releasable == 'yes'
         env:
