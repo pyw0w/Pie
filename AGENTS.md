@@ -62,6 +62,12 @@ Rules:
 
 ## Never do these
 
+0. **Never set `user.name` / `user.email` in this repository.** Commits are
+   authored from the global git config — `PyW0W <pyw0w@users.noreply.github.com>`
+   — so they are attributed to the GitHub account that owns the repo. A
+   repo-local identity silently overrides it and mis-attributes every commit
+   from then on; `git config user.name` must show `PyW0W` before you commit.
+
 1. **Do not edit `MARKETING_VERSION` or `CURRENT_PROJECT_VERSION`** in
    `PiCode.xcodeproj/project.pbxproj`. They are placeholders; the release build
    stamps the real values at build time (`Tools/Release/build-app.sh`).
