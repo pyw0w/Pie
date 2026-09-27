@@ -16,3 +16,7 @@ xcuserdata/
 
 # Local scratch
 /tmp/
+.pi/tasks/*
+
+# Release artifacts
+dist/

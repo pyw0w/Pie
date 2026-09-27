@@ -1,0 +1,122 @@
+---
+# Releases PiCode on every push to main: computes the next version from
+# Conventional Commits (Tools/Release/version.sh), verifies the tree, builds an
+# arm64 Pie.app, and publishes a GitHub Release with the zip attached.
+#
+# No job commits or pushes back — the tag is created by `gh release create`
+# at the pushed commit, so this workflow cannot trigger itself.
+name: Release
+
+"on":
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # version.sh needs all history and tags to find the last release.
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Select Xcode 16+ (the project format needs it)
+        run: |
+          set -euo pipefail
+          best=""
+          best_score=0
+          for app in /Applications/Xcode*.app; do
+            [ -e "$app" ] || continue
+            xc="$app/Contents/Developer/usr/bin/xcodebuild"
+            ver=$("$xc" -version 2>/dev/null | awk 'NR==1{print $2}') || continue
+            [ -n "$ver" ] || continue
+            score=$(awk -F. -v v="$ver" 'BEGIN{
+              n = split(v, a, "."); s = 0
+              for (i = 1; i <= n; i++) s = s * 100 + a[i]
+              print s
+            }')
+            if [ "$score" -gt "$best_score" ]; then
+              best_score=$score
+              best=$app
+            fi
+          done
+          [ -n "$best" ] || { echo "no Xcode on this runner"; exit 1; }
+          {
+            echo "DEVELOPER_DIR=$best/Contents/Developer"
+          } >> "$GITHUB_ENV"
+          echo "selected: $best"
+
+      # The RPC and path harnesses launch a real `pi`, so CI needs one: the
+      # same install command the app's setup screen shows, into ~/.local —
+      # a prefix PiDiscoveryService's fallback scan already knows about, so
+      # discovery works even though the runner's login shell PATH does not
+      # include it.
+      - name: Install pi (harnesses run against the real binary)
+        run: |
+          set -euo pipefail
+          npm install -g --prefix "$HOME/.local" --ignore-scripts \
+            @earendil-works/pi-coding-agent
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/pi" --version
+
+      - name: Verify (type-check + headless harnesses)
+        run: REQUIRE_PI=1 ./Tools/CI/verify.sh
+
+      - name: Compute the next version
+        id: ver
+        run: |
+          set -euo pipefail
+          CUR=$(./Tools/Release/version.sh current)
+          NEX=$(./Tools/Release/version.sh next)
+          BUMP=$(./Tools/Release/version.sh bump)
+          REL=$(./Tools/Release/version.sh releasable)
+          {
+            echo "releasable=$REL"
+            echo "version=$NEX"
+            echo "current=$CUR"
+            echo "bump=$BUMP"
+          } >> "$GITHUB_OUTPUT"
+          echo "current: $CUR -> next: $NEX (bump: $BUMP)"
+
+      - name: Build arm64 Pie.app
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: ./Tools/Release/build-app.sh "$VERSION"
+
+      - name: Publish release
+        if: steps.ver.outputs.releasable == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v$VERSION"
+          ZIP="dist/Pie-$VERSION-arm64.zip"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already exists — nothing to release"
+            exit 0
+          fi
+          ./Tools/Release/version.sh notes > notes.md
+          cat notes.md
+          gh release create "$TAG" "$ZIP" \
+            --title "Pie $VERSION" \
+            --notes-file notes.md \
+            --target "$GITHUB_SHA"
+
+      - name: Nothing to release
+        if: steps.ver.outputs.releasable != 'true'
+        env:
+          CURRENT: ${{ steps.ver.outputs.current }}
+        run: |
+          echo "Only chore/docs/ci/style/test commits since $CURRENT."
+          echo "No tag, no release."
