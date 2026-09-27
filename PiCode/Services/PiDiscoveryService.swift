@@ -51,9 +51,16 @@ struct PiDiscoveryService {
     }
 
     /// Candidates used when the login shell cannot answer.
+    ///
+    /// Pi's own installer puts `pi` in `<agent>/bin/pi`, so that path leads the
+    /// list: it is resolved through `PiPaths` rather than `NSHomeDirectory()`,
+    /// which means a relocated agent directory (`PI_CODING_AGENT_DIR`) is found
+    /// exactly as Pi itself relocates. Validation still runs `pi --version` on
+    /// it, so a stale or broken copy falls through to the next candidate.
     static var fallbackCandidates: [String] {
         let home = NSHomeDirectory()
         return [
+            PiPaths.agentDirectory.appendingPathComponent("bin/pi").path,
             "/opt/homebrew/bin/pi",
             "/usr/local/bin/pi",
             "\(home)/.bun/bin/pi",
