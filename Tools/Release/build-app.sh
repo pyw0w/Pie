@@ -6,10 +6,11 @@
 #   ./Tools/Release/build-app.sh [version]     # default: Tools/Release/version.sh next
 #
 # Environment:
-#   CONFIG=Debug              build configuration (default Release)
-#   DERIVED_DATA_PATH=/tmp/x  xcodebuild derived data (default /tmp/picode-dd)
-#   OUT_DIR=dist              where the zip lands (default ./dist)
-#   BUILD_NUMBER=n            CFBundleVersion (default: number of commits)
+#   CONFIG=Debug        build configuration (default Release)
+#   SYMROOT=/tmp/x      where the .app lands (default /tmp/picode-build)
+#   OBJROOT=/tmp/x      intermediates (default /tmp/picode-build-obj)
+#   OUT_DIR=dist        where the zip lands (default ./dist)
+#   BUILD_NUMBER=n      CFBundleVersion (default: number of commits)
 #
 # Prints `app=`, `zip=`, `version=` on success — CI reads those lines.
 #
@@ -30,7 +31,11 @@ fi
 
 VERSION=${1:-$(./Tools/Release/version.sh next)}
 CONFIG=${CONFIG:-Release}
-DERIVED=${DERIVED_DATA_PATH:-/tmp/picode-dd}
+# Products are addressed through SYMROOT, not -derivedDataPath: xcodebuild
+# refuses -derivedDataPath next to -target (it demands a scheme, and this
+# project shares none — its scheme lives in xcuserdata).
+SYMROOT=${SYMROOT:-/tmp/picode-build}
+OBJROOT=${OBJROOT:-/tmp/picode-build-obj}
 OUT_DIR=${OUT_DIR:-$PWD/dist}
 BUILD_NUMBER=${BUILD_NUMBER:-$(git rev-list --count HEAD)}
 
@@ -40,14 +45,14 @@ esac
 
 echo "build-app: version $VERSION (build $BUILD_NUMBER), $CONFIG, arm64"
 xcodebuild -project PiCode.xcodeproj -target PiCode -configuration "$CONFIG" \
-    -derivedDataPath "$DERIVED" \
+    SYMROOT="$SYMROOT" OBJROOT="$OBJROOT" \
     ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
     MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
     CODE_SIGNING_ALLOWED=NO \
     VALIDATE_PRODUCT=NO \
     build
 
-APP="$DERIVED/Build/Products/$CONFIG/Pie.app"
+APP="$SYMROOT/$CONFIG/Pie.app"
 [ -d "$APP" ] || die "expected $APP after the build"
 
 # Ad-hoc signature: enough to run locally, and it makes the bundle verifiable.
