@@ -34,6 +34,9 @@ enum PiEvent: Equatable {
     case summarizationRetryFinished
     case extensionError(extensionPath: String?, event: String?, error: String)
     case extensionUIRequest(ExtensionUIRequest)
+    /// A session entry committed to Pi's session. Pi appends every entry type
+    /// this way; only the ones PiCode renders need handling here.
+    case entryAppended(entry: JSONValue)
     case unknown(type: String)
 
     init(json: JSONValue) {
@@ -135,6 +138,8 @@ enum PiEvent: Equatable {
             )
         case "extension_ui_request":
             self = .extensionUIRequest(ExtensionUIRequest(json: json))
+        case "entry_appended":
+            self = .entryAppended(entry: json["entry"] ?? .null)
         default:
             self = .unknown(type: type)
         }
@@ -164,6 +169,7 @@ enum PiEvent: Equatable {
         case .summarizationRetryFinished: return "summarization_retry_finished"
         case .extensionError: return "extension_error"
         case .extensionUIRequest: return "extension_ui_request"
+        case .entryAppended: return "entry_appended"
         case .unknown(let type): return type
         }
     }

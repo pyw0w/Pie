@@ -45,6 +45,12 @@ func runSmokeTest() async -> Int32 {    var failures = 0
         .appendingPathComponent("picode-smoke-project", isDirectory: true)
     try? FileManager.default.createDirectory(at: sandbox, withIntermediateDirectories: true)
 
+    // Whether a trust decision already exists is the user's own state — this
+    // machine can have one from the app — so the check is *this run* writing
+    // or changing it, not the file's mere existence.
+    let trustPath = PiPaths.trustFile.path
+    let trustBefore = FileManager.default.contents(atPath: trustPath)
+
     print("== session index (before) ==")
     let index = SessionIndex()
     let before = index.loadAllSessions()
@@ -156,8 +162,12 @@ func runSmokeTest() async -> Int32 {    var failures = 0
     }
 
     print("== trust file untouched ==")
-    check("no trust decision was written", !FileManager.default.fileExists(atPath: PiPaths.trustFile.path),
-          PiPaths.trustFile.path.abbreviatingHomeDirectory)
+    let trustAfter = FileManager.default.contents(atPath: trustPath)
+    check("no trust decision was written",
+          trustBefore == trustAfter,
+          trustBefore == trustAfter
+            ? "\(trustPath.abbreviatingHomeDirectory) unchanged"
+            : "\(trustPath.abbreviatingHomeDirectory) changed by this run")
 
     print("== unknown command is rejected, not ignored ==")
     do {

@@ -1357,6 +1357,21 @@ final class PiSessionController {
         case .extensionUIRequest(let request):
             handleExtensionRequest(request)
 
+        case .entryAppended(let entry):
+            // Pi commits every session entry as an event, but only one of them
+            // changes anything here: a background task's terminal notice.
+            // Custom messages become transcript rows from `get_messages`, and
+            // nothing refreshes while a session sits idle — a task whose
+            // completion does not start a follow-up turn would otherwise stay
+            // invisible until the next unrelated event.
+            let isTaskNotice = entry.string("type") == "custom_message"
+                && entry.string("customType") == BackgroundTaskNotification.customType
+            if isTaskNotice {
+                Task { [weak self] in
+                    await self?.refreshMessages()
+                }
+            }
+
         case .unknown(let type):
             protocolWarnings.append("Unhandled event type `\(type)`")
             if protocolWarnings.count > 40 { protocolWarnings.removeFirst() }

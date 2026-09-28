@@ -164,6 +164,9 @@ struct PiMessage: Equatable {
     /// `custom` / `custom_message` extension payloads.
     var customType: String?
     var display: Bool = true
+    /// The extension's structured snapshot on a `custom` message — the runner's
+    /// own record behind `background-task-notification`, and friends.
+    var details: JSONValue?
     /// `compactionSummary` / `branchSummary`.
     var summary: String = ""
     var tokensBefore: Int?
@@ -206,6 +209,7 @@ struct PiMessage: Equatable {
         fullOutputPath = raw.string("fullOutputPath")
         customType = raw.string("customType")
         display = raw.bool("display") ?? true
+        details = raw["details"]
         summary = raw.string("summary") ?? ""
         tokensBefore = raw.int("tokensBefore")
         fromId = raw.string("fromId")

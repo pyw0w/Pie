@@ -258,6 +258,20 @@ enum TranscriptBuilder {
 
         private func appendCustom(_ message: PiMessage, index: Int) {
             guard message.display else { return }
+            // A background task's terminal notice is structured data about a
+            // run, not prose: drawing its markup would hand the user the
+            // extension's wire format instead of the task it describes.
+            if message.customType == BackgroundTaskNotification.customType,
+               let task = BackgroundTaskNotification.parse(message: message) {
+                append(TranscriptItem(
+                    id: "bg-\(index)-\(task.id)",
+                    kind: .backgroundTask,
+                    text: task.oneLine,
+                    timestamp: message.timestamp,
+                    backgroundTask: task
+                ))
+                return
+            }
             let text = message.textContent.isEmpty ? (message.customType ?? "") : message.textContent
             guard !text.isEmpty else { return }
             append(TranscriptItem(

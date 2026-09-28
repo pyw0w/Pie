@@ -63,6 +63,7 @@ PiCode's own preferences.
 | `swiftc -typecheck` over all sources | ✅ clean |
 | RPC layer vs real `pi` (v0.85.1) | ✅ `./Tools/SmokeTest/run.sh` — all checks pass |
 | JSON boundary (reads + writes) | ✅ `./Tools/SmokeTest/run-json.sh` — scanner matches Foundation on every real session line, 20k-deep nesting safe |
+| Background-task notice → transcript row | ✅ `./Tools/SmokeTest/run-notice.sh` — 47 checks over a verbatim `background-task-notification`: snapshot parse, body fallback, outcome mapping (completed/failed/killed/unknown), the `.backgroundTask` row and its copy line, `display: false` suppression, and the `entry_appended` event that triggers the live refresh |
 | Session replay over all real sessions | ✅ `./Tools/SmokeTest/run-replay.sh` — 9908 lines, 9004 transcript rows, no bad rows/ids/roles; also proves the folding rule (see the row below) |
 | Resuming a real session (`--session`) | ✅ `./Tools/SmokeTest/run-open.sh` — read-only verified byte-for-byte |
 | Pi config locations (relocated `PI_CODING_AGENT_DIR` etc.) | ✅ `./Tools/SmokeTest/run-paths.sh` — PiCode and Pi agree, proven against a live `pi` |
@@ -103,6 +104,7 @@ open /tmp/picode-dd/Build/Products/Debug/PiCode.app
 
 # 4. The other harnesses (all read-only, no credits)
 ./Tools/SmokeTest/run-json.sh     # JSON scanner vs Foundation + deep nesting
+./Tools/SmokeTest/run-notice.sh    # background-task notice: snapshot, body fallback, row, event
 ./Tools/SmokeTest/run-replay.sh   # every real session file through the transcript builder
 ./Tools/SmokeTest/run-open.sh     # resume the biggest real session (copy) and re-read it
 ./Tools/SmokeTest/run-open.sh --small   # smallest session; also diffs the tree vs get_tree

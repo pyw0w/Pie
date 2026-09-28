@@ -114,6 +114,7 @@ struct TranscriptItem: Identifiable, Equatable {
         case toolCall
         case toolResult
         case system
+        case backgroundTask
         case error
         case compaction
         case retry
@@ -156,6 +157,8 @@ struct TranscriptItem: Identifiable, Equatable {
 
     // System row metadata
     var badge: String?
+    /// Set on `.backgroundTask` items: the task the notice is about.
+    var backgroundTask: BackgroundTaskNotification?
     /// Set on `.compaction` items: which of Pi's two summaries this row is.
     var summaryKind: SummaryKind?
     /// Set on user items so the transcript can offer fork-from-here.

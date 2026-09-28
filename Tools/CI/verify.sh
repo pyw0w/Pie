@@ -43,6 +43,9 @@ echo "ok"
 echo "== JSON scanner vs Foundation =="
 ./Tools/SmokeTest/run-json.sh
 
+echo "== background-task notice (parse, row, event) =="
+./Tools/SmokeTest/run-notice.sh
+
 if command -v pi >/dev/null 2>&1 || [ -x "$HOME/.pi/agent/bin/pi" ]; then
     echo "== RPC layer against a real pi =="
     ./Tools/SmokeTest/run.sh

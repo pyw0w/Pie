@@ -77,6 +77,7 @@ struct TranscriptRowView: View {
             case .toolCall: ToolCallCard(item: item, controller: controller)
             case .toolResult: toolResultRow
             case .system: systemRow
+            case .backgroundTask: backgroundTaskRow
             case .error: errorRow
             case .compaction: compactionRow
             case .retry: retryRow
@@ -185,6 +186,119 @@ struct TranscriptRowView: View {
         }
         .padding(10)
         .background(.quaternary.opacity(0.22), in: RoundedRectangle(cornerRadius: 9))
+    }
+
+    private var backgroundTaskRow: some View {
+        Group {
+            if let task = item.backgroundTask {
+                backgroundTaskNotice(task)
+            } else {
+                // A row that lost its task is still a notice; show what Pi
+                // sent rather than an empty card.
+                systemRow
+            }
+        }
+    }
+
+    /// One background task's terminal notice. The pill carries the status, the
+    /// facts line the run, and the path the output landed in — the three things
+    /// the notification exists to say. The command, the cwd and Pi's guidance
+    /// sentence stay on the context menu, where they cost nothing until a
+    /// failure sends someone looking for them.
+    private func backgroundTaskNotice(_ task: BackgroundTaskNotification) -> some View {
+        let tone = backgroundTone(task.outcome)
+        return HStack(alignment: .top, spacing: 8) {
+            Image(systemName: backgroundGlyph(task.outcome))
+                .imageScale(.small)
+                .foregroundStyle(tone)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(task.status)
+                        .font(TranscriptStyle.text.weight(.semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .foregroundStyle(tone)
+                        .background(tone.opacity(0.16), in: Capsule())
+                    Text(task.displayName)
+                        .font(TranscriptStyle.text.weight(.semibold))
+                        .textSelection(.enabled)
+                    Text("#\(task.id)")
+                        .font(TranscriptStyle.code)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                    Spacer(minLength: 0)
+                }
+                if !task.factsLine.isEmpty {
+                    Text(task.factsLine)
+                        .font(TranscriptStyle.text)
+                        .foregroundStyle(.secondary)
+                }
+                if let error = task.error, !error.isEmpty {
+                    Text(error)
+                        .font(TranscriptStyle.text)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                }
+                if let output = task.outputPath, !output.isEmpty {
+                    HStack(spacing: 6) {
+                        Text(output.abbreviatingHomeDirectory)
+                            .font(TranscriptStyle.code)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .textSelection(.enabled)
+                        Button("Reveal") { WorkspaceLauncher.reveal(resolvedOutput(task)) }
+                            .buttonStyle(.borderless)
+                            .font(TranscriptStyle.text)
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(.quaternary.opacity(0.22), in: RoundedRectangle(cornerRadius: 9))
+        .contextMenu {
+            Button("Copy Task ID") { WorkspaceLauncher.copyToPasteboard(task.id) }
+            if let output = task.outputPath, !output.isEmpty {
+                Button("Copy Output Path") { WorkspaceLauncher.copyToPasteboard(resolvedOutput(task)) }
+                Button("Reveal Output") { WorkspaceLauncher.reveal(resolvedOutput(task)) }
+            }
+            if let command = task.command, !command.isEmpty {
+                Button("Copy Command") { WorkspaceLauncher.copyToPasteboard(command) }
+            }
+            Button("Copy Notice") { WorkspaceLauncher.copyToPasteboard(item.text) }
+        }
+    }
+
+    /// The output path as the runner wrote it: relative to the task's own cwd,
+    /// which is not necessarily the project this window has open.
+    private func resolvedOutput(_ task: BackgroundTaskNotification) -> String {
+        guard let output = task.outputPath, !output.isEmpty else { return "" }
+        if output.isAbsolutePath { return output }
+        let base = (task.cwd?.isEmpty ?? true) ? controller.projectPath : (task.cwd ?? controller.projectPath)
+        return base + "/" + output
+    }
+
+    private func backgroundGlyph(_ outcome: BackgroundTaskNotification.Outcome) -> String {
+        switch outcome {
+        case .success: return "checkmark.circle.fill"
+        case .failure: return "xmark.circle.fill"
+        case .cancelled: return "stop.circle.fill"
+        case .working: return "arrow.triangle.2.circlepath"
+        case .unknown: return "questionmark.circle"
+        }
+    }
+
+    private func backgroundTone(_ outcome: BackgroundTaskNotification.Outcome) -> Color {
+        switch outcome {
+        case .success: return .green
+        case .failure: return .red
+        case .cancelled: return .orange
+        case .working: return .blue
+        case .unknown: return .gray
+        }
     }
 
     private var errorRow: some View {

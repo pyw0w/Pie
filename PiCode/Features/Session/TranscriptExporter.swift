@@ -43,6 +43,17 @@ enum TranscriptExporter {
             case .system:
                 lines.append("## \(item.badge ?? "Note")")
                 lines.append(item.text)
+            case .backgroundTask:
+                if let task = item.backgroundTask {
+                    lines.append("## Background task: \(task.displayName) (#\(task.id))")
+                    lines.append(item.text)
+                    if let command = task.command, !command.isEmpty {
+                        lines.append("Command: \(command)")
+                    }
+                } else {
+                    lines.append("## Background task")
+                    lines.append(item.text)
+                }
             case .error:
                 lines.append("## Error")
                 lines.append(item.errorMessage ?? item.text)

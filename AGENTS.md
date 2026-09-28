@@ -93,8 +93,9 @@ Commits on a branch that never reaches `main` release nothing.
 Run what proves the change, not everything, but never nothing:
 
 ```bash
-./Tools/CI/verify.sh                   # type-check + JSON/RPC/path harnesses
+./Tools/CI/verify.sh                   # type-check + JSON/notice/RPC/path harnesses
 ./Tools/SmokeTest/run-replay.sh        # transcript/folding changes
+./Tools/SmokeTest/run-notice.sh        # background-task notice parsing (also in verify.sh)
 ./Tools/SmokeTest/run-open.sh          # session-tree changes
 ```
 
@@ -102,10 +103,17 @@ GUI harnesses (`run-sidebar-*.sh`, `run-composer.sh`) need a window server.
 CI runs only `Tools/CI/verify.sh`, so a green local GUI harness is the only
 evidence you get for those.
 
+Editor LSP note: on a machine without Xcode (CommandLine Tools only) the
+Swift language server has no build system and reports false cross-file
+errors (e.g. "Cannot find type 'JSONValue'" inside the file that uses it).
+That is why `~/.pi-lens/config.json` disables the `swift` server here —
+`swiftc` via `verify.sh` is the authoritative type-check.
+
 ## What happens on push to main
 
-1. `Tools/CI/verify.sh` — type-check, JSON scanner, RPC against a real `pi`,
-   Pi path resolution. A failure blocks the release.
+1. `Tools/CI/verify.sh` — type-check, JSON scanner, the background-task
+   notice harness, RPC against a real `pi`, Pi path resolution. A failure
+   blocks the release.
 2. `version.sh` — the version, from the commit subjects since the last tag.
 3. `Tools/Release/build-app.sh` — universal `Pie.app` (arm64 + Intel),
    version stamped, ad-hoc signed, packaged as
